@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import socket from "../../socket/index"
 import ACTIONS from "../../socket/actions"
 import { useHistory } from "react-router-dom"
@@ -7,14 +7,17 @@ import { v4 } from "uuid"
 export const Main = () => {
   const history = useHistory()
   const [rooms, setRooms] = useState([])
+  const rootNode = useRef()
 
   useEffect(() => {
     socket.on(ACTIONS.SHARE_ROOMS, ({ rooms = [] } = {}) => {
-      setRooms(rooms)
+      if (rootNode.current) {
+        setRooms(rooms)
+      }
     })
   }, [])
   return (
-    <div>
+    <div ref={rootNode}>
       <h1>Доступные комнаты</h1>
 
       <ul>

@@ -1,6 +1,7 @@
 const path = require("path")
 const express = require("express")
 const ACTIONS = require("./src/socket/actions")
+const { validate, version } = require("uuid")
 const app = express()
 const server = require("http").createServer(app)
 const io = require("socket.io")(server)
@@ -10,7 +11,7 @@ const PORT = process.env.PORT || 3001
 const getClinentRooms = () => {
   const { rooms } = io.sockets.adapter
 
-  return Array.from(rooms.keys())
+  return Array.from(rooms.keys()).filter(roomID => validate(roomID) && version(roomID) === 4)
 }
 
 const shareRoomsInfo = () => {

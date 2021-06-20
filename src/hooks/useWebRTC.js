@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react"
 import socket from "../socket"
-import freeice from 'freeice'
+import freeice from "freeice"
 import ACTIONS from "../socket/actions"
 import { useStateWithCallback } from "./useStateWithCallback"
 
@@ -31,10 +31,87 @@ export const useWebRTC = (roomID) => {
       }
 
       peerConnections.current[peerID] = new RTCPeerConnection({
-          iceServers: freeice()
+        iceServers: freeice(),
       })
+
+      peerConnections.current[peerID].onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit(ACTIONS.RELAY_ICE, {
+            peerID,
+            iceCandidate: event.candidate,
+          })
+        }
+      }
+
+      let tracksNumber = 0
+      peerConnections.current[peerID].ontrack = ({
+        streams: [remoteStream],
+      }) => {
+        tracksNumber++
+        if (tracksNumber === 2) {
+          addNewClient(peerID, () => {
+            peerMediaElements.current[peerID].srcObject = remoteStream
+          })
+        }
+      }
+      localMediaStream.current.getTracks().forEach((track) => {
+        peerConnections.current[peerID].addTrack(
+          track,
+          localMediaStream.current
+        )
+      })
+
+      if (createOffer) {
+        const offer = await peerConnections.current[peerID].createOffer()
+
+        await peerConnections.current[peerID].setLocalDescription(offer)
+        socket.emit(ACTIONS.RELAY_SDP, {
+          peerID,
+          sessionDescription: offer,
+        })
+      }
     }
     socket.on(ACTIONS.ADD_PEER, handleNewPeer)
+  }, [])
+
+  useEffect(() => {
+    const setRemoteMedia = async ({ peerID, sessionDescription }) => {
+      await peerConnections.current[peerID].setRemoteDescripton(
+        new RTCSessionDescription()
+      )
+
+      if (sessionDescription.type === "offer") {
+        const answer = await peerConnections.current[peerID].createAnswer()
+        await peerConnections.current[peerID].setLocalDescription(answer)
+        socket.emit(ACTIONS.RELAY_SDP, {
+          peerID,
+          sessionDescription: answer,
+        })
+      }
+    }
+    socket.on(ACTIONS.SESSION_DESCRIPTION, setRemoteMedia)
+  }, [])
+
+  useEffect(() => {
+    socket.on(ACTIONS.ICE_CANDIDATE, ({ peerID, iceCandidate }) => {
+      peerConnections.current[peerID].addIceCandidate(
+        new RTCIceCandidate(iceCandidate)
+      )
+    })
+  }, [])
+
+  useEffect(() => {
+
+    socket.on(ACTIONS.REMOVE_PEER, ( { peerID })=> {
+        if(peerConnections.current[peerID]){
+            peerConnections.current[peerID].close()
+        }
+
+        delete peerConnections.current[peerID]
+        delete peerMediaElements.current[peerID]
+        setClients(list => list.filter( c => c!== peerID))
+
+    })
   }, [])
 
   useEffect(() => {

@@ -11,7 +11,9 @@ const PORT = process.env.PORT || 3001
 const getClinentRooms = () => {
   const { rooms } = io.sockets.adapter
 
-  return Array.from(rooms.keys()).filter(roomID => validate(roomID) && version(roomID) === 4)
+  return Array.from(rooms.keys()).filter(
+    (roomID) => validate(roomID) && version(roomID) === 4
+  )
 }
 
 const shareRoomsInfo = () => {
@@ -69,6 +71,19 @@ io.on("connection", (socket) => {
 
   socket.on(ACTIONS.LEAVE, leaveRoom)
   socket.on("disconnecting", leaveRoom)
+  socket.on(ACTIONS.RELAY_SDP, ({ peerID, sessionDescription }) => {
+    io.to(peerID).emit(ACTIONS.SESSION_DESCRIPTION, {
+      peerID: socket.id,
+      sessionDescription,
+    })
+  })
+
+  socket.on(ACTIONS.RELAY_ICE, ({ peerID, iceCandidate }) => {
+    io.to(peerID).emit(ACTIONS.ICE_CANDIDATE, {
+      peerID: socket.id,
+      iceCandidate,
+    })
+  })
 })
 
 server.listen(PORT, () => {

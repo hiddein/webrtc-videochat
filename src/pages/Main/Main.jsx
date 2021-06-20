@@ -1,46 +1,40 @@
-import React, { useState, useEffect, useRef } from "react"
-import socket from "../../socket/index"
-import ACTIONS from "../../socket/actions"
-import { useHistory } from "react-router-dom"
-import { v4 } from "uuid"
+import {useState, useEffect, useRef} from 'react';
+import socket from '../../socket';
+import ACTIONS from '../../socket/actions';
+import {useHistory} from 'react-router';
+import {v4} from 'uuid';
 
 export const Main = () => {
-  const history = useHistory()
-  const [rooms, setRooms] = useState([])
-  const rootNode = useRef()
+  const history = useHistory();
+  const [rooms, updateRooms] = useState([]);
+  const rootNode = useRef();
 
   useEffect(() => {
-    socket.on(ACTIONS.SHARE_ROOMS, ({ rooms = [] } = {}) => {
+    socket.on(ACTIONS.SHARE_ROOMS, ({rooms = []} = {}) => {
       if (rootNode.current) {
-        setRooms(rooms)
+        updateRooms(rooms);
       }
-    })
-  }, [])
+    });
+  }, []);
+
   return (
     <div ref={rootNode}>
-      <h1>Доступные комнаты</h1>
+      <h1>Available Rooms</h1>
 
       <ul>
-        {rooms.map((roomID) => (
+        {rooms.map(roomID => (
           <li key={roomID}>
             {roomID}
-            <button
-              onClick={() => {
-                history.push(`/room/${roomID}`)
-              }}
-            >
-              Войти
-            </button>
+            <button onClick={() => {
+              history.push(`/room/${roomID}`);
+            }}>JOIN ROOM</button>
           </li>
         ))}
       </ul>
-      <button
-        onClick={() => {
-          history.push(`/room/${v4()}`)
-        }}
-      >
-        Добавить новую комнату
-      </button>
+
+      <button onClick={() => {
+        history.push(`/room/${v4()}`);
+      }}>Create New Room</button>
     </div>
-  )
+  );
 }
